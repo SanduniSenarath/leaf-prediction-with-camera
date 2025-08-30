@@ -1,9 +1,10 @@
 import os
-import cv2
 import numpy as np
+from PIL import Image
 import streamlit as st
 import joblib
 from skimage.feature import hog, local_binary_pattern
+import cv2  # only for feature extraction functions (grayscale, HSV conversion)
 
 # ======================
 # Load trained model
@@ -36,13 +37,21 @@ model = load_model()
 # Feature Extraction
 # ======================
 def extract_features(image):
+    """
+    Input: PIL image or numpy array (H, W, C)
+    """
+    # Convert PIL to numpy array if needed
+    if isinstance(image, Image.Image):
+        image = np.array(image)
+
+    # Resize to 128x128
     img = cv2.resize(image, (128, 128))
 
     # 1. Color Histogram
     hist = cv2.calcHist([img], [0,1,2], None, [10,10,10], [0,256,0,256,0,256]).flatten()
 
     # 2. HOG
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     hog_features = hog(gray, orientations=8, pixels_per_cell=(16,16),
                        cells_per_block=(1,1), visualize=False)
 
@@ -51,7 +60,7 @@ def extract_features(image):
     lbp_hist = np.histogram(lbp, bins=10)[0]
 
     # 4. HSV Histogram
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
     hsv_hist = cv2.calcHist([hsv], [0,1,2], None, [8,8,8], [0,180,0,256,0,256]).flatten()
 
     return np.concatenate([hist, hog_features, lbp_hist, hsv_hist])
@@ -72,16 +81,14 @@ image = None
 if choice == "Camera":
     camera_file = st.camera_input("Take a picture / රූපයක් ගන්න")
     if camera_file is not None:
-        file_bytes = np.asarray(bytearray(camera_file.read()), dtype=np.uint8)
-        image = cv2.imdecode(file_bytes, 1)
+        image = Image.open(camera_file)
 elif choice == "Upload / උඩුගත කරන්න":
     uploaded_file = st.file_uploader("Upload Image / රූපය උඩුගත කරන්න", type=["jpg", "jpeg", "png"])
     if uploaded_file is not None:
-        file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-        image = cv2.imdecode(file_bytes, 1)
+        image = Image.open(uploaded_file)
 
 if image is not None:
-    st.image(cv2.cvtColor(image, cv2.COLOR_BGR2RGB), caption="Input Image / ලබාදුන් රූපය", use_column_width=True)
+    st.image(image, caption="Input Image / ලබාදුන් රූපය", use_column_width=True)
 
     # Extract features and predict
     features = extract_features(image).reshape(1, -1)
