@@ -51,13 +51,13 @@ def extract_features(image: Image.Image):
     return np.concatenate([hist, hog_features, lbp_hist, hsv_hist])
 
 # ======================
-# Modern Mobile CSS
+# CSS for Mobile-Friendly Design
 # ======================
 st.markdown("""
 <style>
-/* Background gradient */
+/* White background */
 body {
-    background: linear-gradient(160deg, #f0f8ff, #d0f0c0);
+    background-color: #ffffff;
 }
 
 /* Main title */
@@ -69,24 +69,30 @@ h1 {
 
 /* Subheaders */
 h2, h3 {
-    color: #228B22;
+    color: #228B22;  /* green */
 }
 
 /* Prediction box */
 .stAlert {
     border-radius: 15px;
     padding: 15px;
-    background-color: #f5f5dc;  /* beige */
-    color: #333;
+    background-color: #fff9c4;  /* soft yellow */
+    color: #006400;  /* dark green text */
     font-size: 16px;
 }
 
 /* Camera / Upload section */
 .stFileUploader>div, .stCameraInput>div {
-    background-color: #ffffffcc;
+    background-color: #ffffff;
     border-radius: 15px;
     padding: 10px;
     margin-bottom: 10px;
+    box-shadow: 2px 2px 5px #aaa;
+}
+
+/* Toggle buttons */
+.css-1emrehy.edgvbvh3 {
+    background-color: #aed581 !important; /* light green toggle */
 }
 </style>
 """, unsafe_allow_html=True)
@@ -96,20 +102,20 @@ h2, h3 {
 # ======================
 st.title("Rice Leaf Disease Detection / ගොයම් කොළ රෝග හඳුනා ගැනීම")
 
-# Toggle for language
+# Language toggle
 language = st.toggle("English / සිංහල", key="lang_toggle", value=True)
 
-# Image input method
-choice = st.radio("Input Method / රූප ලබාගැනීමේ ක්‍රමය", ["Camera", "Upload / උඩුගත කරන්න"])
+# Image input toggle
+use_camera = st.toggle("Use Camera / කැමරා භාවිතා කරන්න", key="input_toggle", value=True)
 
 image = None
-if choice == "Camera":
+if use_camera:
     camera_file = st.camera_input("Take a picture / රූපයක් ගන්න")
-    if camera_file is not None:
+    if camera_file:
         image = Image.open(camera_file)
-elif choice == "Upload / උඩුගත කරන්න":
+else:
     uploaded_file = st.file_uploader("Upload Image / රූපය උඩුගත කරන්න", type=["jpg","jpeg","png"])
-    if uploaded_file is not None:
+    if uploaded_file:
         image = Image.open(uploaded_file)
 
 if image:
