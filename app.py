@@ -3,13 +3,14 @@ from PIL import Image
 import streamlit as st
 import joblib
 from skimage.feature import hog, local_binary_pattern
+from skimage.color import rgb2gray
+from matplotlib.colors import rgb_to_hsv
 
 # ======================
 # Load trained model
 # ======================
 MODEL_PATH = "best_leaf_model.pkl"
 
-# Class labels and descriptions
 class_map = {
     0: {"name_en": "Bacterial Leaf Blight", 
         "name_si": "බැක්ටීරියා ලීෆ් බ්ලයිට්",
@@ -32,47 +33,61 @@ def load_model():
 model = load_model()
 
 # ======================
-# Feature Extraction (Pillow + NumPy)
+# Feature Extraction
 # ======================
 def extract_features(image: Image.Image):
-    # Convert to RGB numpy array
     img = image.convert("RGB")
     img = np.array(img)
+    img = np.array(Image.fromarray(img).resize((128,128)))
 
-    # Resize to 128x128
-    img = np.array(Image.fromarray(img).resize((128, 128)))
+    # Color Histogram
+    hist = np.histogramdd(img.reshape(-1,3), bins=(10,10,10), range=((0,255),(0,255),(0,255)))[0].flatten()
 
-    # 1. Color Histogram
-    hist = np.histogramdd(img.reshape(-1, 3), bins=(10,10,10), range=((0,255),(0,255),(0,255)))[0].flatten()
-
-    # 2. HOG
-    from skimage.color import rgb2gray
+    # HOG
     gray = rgb2gray(img)
-    hog_features = hog(gray, orientations=8, pixels_per_cell=(16,16),
-                       cells_per_block=(1,1), visualize=False)
+    hog_features = hog(gray, orientations=8, pixels_per_cell=(16,16), cells_per_block=(1,1), visualize=False)
 
-    # 3. LBP
+    # LBP
     lbp = local_binary_pattern((gray*255).astype(np.uint8), P=8, R=1)
     lbp_hist = np.histogram(lbp, bins=10, range=(0,255))[0]
 
-    # 4. HSV Histogram
-    from matplotlib.colors import rgb_to_hsv
+    # HSV
     hsv = rgb_to_hsv(img/255.0)
     hsv_hist = np.histogramdd(hsv.reshape(-1,3), bins=(8,8,8), range=((0,1),(0,1),(0,1)))[0].flatten()
 
     return np.concatenate([hist, hog_features, lbp_hist, hsv_hist])
 
 # ======================
+# Mobile-friendly CSS
+# ======================
+st.markdown("""
+<style>
+body {
+    background-color: white;
+}
+h1, h2, h3, h4, h5, h6 {
+    color: #006400; /* dark green */
+}
+.stButton>button {
+    background-color: #FFA500;  /* orange buttons */
+    color: white;
+}
+.stRadio>div, .stSelectbox>div {
+    background-color: #FFFF66;  /* light yellow */
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ======================
 # Streamlit UI
 # ======================
 st.title("Rice Leaf Disease Detection / ගොයම් කොළ රෝග හඳුනා ගැනීම")
-st.write("Take a photo or upload an image of a rice leaf to detect disease / කොළ රෝග හඳුනා ගැනීමට රූපයක් උඩුගත කරන්න")
 
-# Language selection
-language = st.radio("Select Language / භාෂාව තෝරන්න", ("English", "සිංහල"))
+# Toggle for language
+language = st.radio("Select Language / භාෂාව තෝරන්න", ["English", "සිංහල"])
 
-# Image input
-choice = st.radio("Choose input method / රූප ලබාගැනීමේ ක්‍රමය තෝරන්න", ("Camera", "Upload / උඩුගත කරන්න"))
+# Image input method
+choice = st.radio("Choose input / රූප ලබාගැනීමේ ක්‍රමය", ["Camera", "Upload / උඩුගත කරන්න"])
 
 image = None
 if choice == "Camera":
@@ -84,7 +99,7 @@ elif choice == "Upload / උඩුගත කරන්න":
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
 
-if image is not None:
+if image:
     st.image(image, caption="Input Image / ලබාදුන් රූපය", use_column_width=True)
 
     # Predict
