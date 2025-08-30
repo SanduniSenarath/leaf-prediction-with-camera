@@ -40,40 +40,53 @@ def extract_features(image: Image.Image):
     img = np.array(img)
     img = np.array(Image.fromarray(img).resize((128,128)))
 
-    # Color Histogram
     hist = np.histogramdd(img.reshape(-1,3), bins=(10,10,10), range=((0,255),(0,255),(0,255)))[0].flatten()
-
-    # HOG
     gray = rgb2gray(img)
     hog_features = hog(gray, orientations=8, pixels_per_cell=(16,16), cells_per_block=(1,1), visualize=False)
-
-    # LBP
     lbp = local_binary_pattern((gray*255).astype(np.uint8), P=8, R=1)
     lbp_hist = np.histogram(lbp, bins=10, range=(0,255))[0]
-
-    # HSV
     hsv = rgb_to_hsv(img/255.0)
     hsv_hist = np.histogramdd(hsv.reshape(-1,3), bins=(8,8,8), range=((0,1),(0,1),(0,1)))[0].flatten()
 
     return np.concatenate([hist, hog_features, lbp_hist, hsv_hist])
 
 # ======================
-# Mobile-friendly CSS
+# Modern Mobile CSS
 # ======================
 st.markdown("""
 <style>
+/* Background gradient */
 body {
-    background-color: white;
+    background: linear-gradient(160deg, #f0f8ff, #d0f0c0);
 }
-h1, h2, h3, h4, h5, h6 {
-    color: #006400; /* dark green */
+
+/* Main title */
+h1 {
+    color: #006400;  /* dark green */
+    font-family: 'Trebuchet MS', sans-serif;
+    text-align: center;
 }
-.stButton>button {
-    background-color: #FFA500;  /* orange buttons */
-    color: white;
+
+/* Subheaders */
+h2, h3 {
+    color: #228B22;
 }
-.stRadio>div, .stSelectbox>div {
-    background-color: #FFFF66;  /* light yellow */
+
+/* Prediction box */
+.stAlert {
+    border-radius: 15px;
+    padding: 15px;
+    background-color: #f5f5dc;  /* beige */
+    color: #333;
+    font-size: 16px;
+}
+
+/* Camera / Upload section */
+.stFileUploader>div, .stCameraInput>div {
+    background-color: #ffffffcc;
+    border-radius: 15px;
+    padding: 10px;
+    margin-bottom: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -84,10 +97,10 @@ h1, h2, h3, h4, h5, h6 {
 st.title("Rice Leaf Disease Detection / ගොයම් කොළ රෝග හඳුනා ගැනීම")
 
 # Toggle for language
-language = st.radio("Select Language / භාෂාව තෝරන්න", ["English", "සිංහල"])
+language = st.toggle("English / සිංහල", key="lang_toggle", value=True)
 
 # Image input method
-choice = st.radio("Choose input / රූප ලබාගැනීමේ ක්‍රමය", ["Camera", "Upload / උඩුගත කරන්න"])
+choice = st.radio("Input Method / රූප ලබාගැනීමේ ක්‍රමය", ["Camera", "Upload / උඩුගත කරන්න"])
 
 image = None
 if choice == "Camera":
@@ -106,7 +119,7 @@ if image:
     features = extract_features(image).reshape(1,-1)
     pred_class = model.predict(features)[0]
 
-    if language == "English":
+    if language:
         st.subheader("Prediction Result")
         st.success(f"Disease Detected: **{class_map[pred_class]['name_en']}**")
         st.write(f"Description: {class_map[pred_class]['desc_en']}")
