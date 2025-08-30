@@ -51,62 +51,28 @@ def extract_features(image: Image.Image):
     return np.concatenate([hist, hog_features, lbp_hist, hsv_hist])
 
 # ======================
-# CSS for Mobile-Friendly Design
-# ======================
-st.markdown("""
-<style>
-/* White background */
-body {
-    background-color: #ffffff;
-}
-
-/* Main title */
-h1 {
-    color: #006400;  /* dark green */
-    font-family: 'Trebuchet MS', sans-serif;
-    text-align: center;
-}
-
-/* Subheaders */
-h2, h3 {
-    color: #228B22;  /* green */
-}
-
-/* Prediction box */
-.stAlert {
-    border-radius: 15px;
-    padding: 15px;
-    background-color: #fff9c4;  /* soft yellow */
-    color: #006400;  /* dark green text */
-    font-size: 16px;
-}
-
-/* Camera / Upload section */
-.stFileUploader>div, .stCameraInput>div {
-    background-color: #ffffff;
-    border-radius: 15px;
-    padding: 10px;
-    margin-bottom: 10px;
-    box-shadow: 2px 2px 5px #aaa;
-}
-
-/* Toggle buttons */
-.css-1emrehy.edgvbvh3 {
-    background-color: #aed581 !important; /* light green toggle */
-}
-</style>
-""", unsafe_allow_html=True)
-
-# ======================
 # Streamlit UI
 # ======================
-st.title("Rice Leaf Disease Detection / ගොයම් කොළ රෝග හඳුනා ගැනීම")
+st.set_page_config(page_title="Rice Leaf Disease Detection", layout="centered", page_icon="🌾")
+
+st.markdown(
+    """
+    <style>
+    body {background-color: #ffffff;}
+    .big-font {font-size:30px !important; color: #006400; text-align: center;}
+    .sub-font {font-size:20px !important; color: #228B22;}
+    .card {background-color: #fff9c4; padding: 15px; border-radius: 15px; box-shadow: 2px 2px 5px #aaa; margin-bottom: 10px;}
+    </style>
+    """, unsafe_allow_html=True
+)
+
+st.markdown('<p class="big-font">Rice Leaf Disease Detection / ගොයම් කොළ රෝග හඳුනා ගැනීම</p>', unsafe_allow_html=True)
 
 # Language toggle
-language = st.toggle("English / සිංහල", key="lang_toggle", value=True)
+language = st.checkbox("English / සිංහල", value=True)
 
 # Image input toggle
-use_camera = st.toggle("Use Camera / කැමරා භාවිතා කරන්න", key="input_toggle", value=True)
+use_camera = st.checkbox("Use Camera / කැමරා භාවිතා කරන්න", value=True)
 
 image = None
 if use_camera:
@@ -125,11 +91,15 @@ if image:
     features = extract_features(image).reshape(1,-1)
     pred_class = model.predict(features)[0]
 
-    if language:
-        st.subheader("Prediction Result")
-        st.success(f"Disease Detected: **{class_map[pred_class]['name_en']}**")
-        st.write(f"Description: {class_map[pred_class]['desc_en']}")
-    else:
-        st.subheader("ඵලය")
-        st.success(f"හඳුනාගත් රෝගය: **{class_map[pred_class]['name_si']}**")
-        st.write(f"විස්තරය: {class_map[pred_class]['desc_si']}")
+    # Display in a card
+    with st.container():
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        if language:
+            st.markdown(f"### Prediction Result")
+            st.markdown(f"**Disease Detected:** {class_map[pred_class]['name_en']}")
+            st.markdown(f"**Description:** {class_map[pred_class]['desc_en']}")
+        else:
+            st.markdown(f"### ඵලය")
+            st.markdown(f"**හඳුනාගත් රෝගය:** {class_map[pred_class]['name_si']}")
+            st.markdown(f"**විස්තරය:** {class_map[pred_class]['desc_si']}")
+        st.markdown('</div>', unsafe_allow_html=True)
