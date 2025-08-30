@@ -1,17 +1,15 @@
-import os
 import numpy as np
 from PIL import Image
 import streamlit as st
 import joblib
 from skimage.feature import hog, local_binary_pattern
-import cv2  # only for feature extraction functions (grayscale, HSV conversion)
 
 # ======================
 # Load trained model
 # ======================
 MODEL_PATH = "best_leaf_model.pkl"
 
-# Class labels and descriptions (English + Sinhala)
+# Class labels and descriptions
 class_map = {
     0: {"name_en": "Bacterial Leaf Blight", 
         "name_si": "බැක්ටීරියා ලීෆ් බ්ලයිට්",
@@ -34,34 +32,33 @@ def load_model():
 model = load_model()
 
 # ======================
-# Feature Extraction
+# Feature Extraction (Pillow + NumPy)
 # ======================
-def extract_features(image):
-    """
-    Input: PIL image or numpy array (H, W, C)
-    """
-    # Convert PIL to numpy array if needed
-    if isinstance(image, Image.Image):
-        image = np.array(image)
+def extract_features(image: Image.Image):
+    # Convert to RGB numpy array
+    img = image.convert("RGB")
+    img = np.array(img)
 
     # Resize to 128x128
-    img = cv2.resize(image, (128, 128))
+    img = np.array(Image.fromarray(img).resize((128, 128)))
 
     # 1. Color Histogram
-    hist = cv2.calcHist([img], [0,1,2], None, [10,10,10], [0,256,0,256,0,256]).flatten()
+    hist = np.histogramdd(img.reshape(-1, 3), bins=(10,10,10), range=((0,255),(0,255),(0,255)))[0].flatten()
 
     # 2. HOG
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    from skimage.color import rgb2gray
+    gray = rgb2gray(img)
     hog_features = hog(gray, orientations=8, pixels_per_cell=(16,16),
                        cells_per_block=(1,1), visualize=False)
 
     # 3. LBP
-    lbp = local_binary_pattern(gray, P=8, R=1)
-    lbp_hist = np.histogram(lbp, bins=10)[0]
+    lbp = local_binary_pattern((gray*255).astype(np.uint8), P=8, R=1)
+    lbp_hist = np.histogram(lbp, bins=10, range=(0,255))[0]
 
     # 4. HSV Histogram
-    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-    hsv_hist = cv2.calcHist([hsv], [0,1,2], None, [8,8,8], [0,180,0,256,0,256]).flatten()
+    from matplotlib.colors import rgb_to_hsv
+    hsv = rgb_to_hsv(img/255.0)
+    hsv_hist = np.histogramdd(hsv.reshape(-1,3), bins=(8,8,8), range=((0,1),(0,1),(0,1)))[0].flatten()
 
     return np.concatenate([hist, hog_features, lbp_hist, hsv_hist])
 
@@ -74,7 +71,7 @@ st.write("Take a photo or upload an image of a rice leaf to detect disease / ක
 # Language selection
 language = st.radio("Select Language / භාෂාව තෝරන්න", ("English", "සිංහල"))
 
-# Image input: camera or upload
+# Image input
 choice = st.radio("Choose input method / රූප ලබාගැනීමේ ක්‍රමය තෝරන්න", ("Camera", "Upload / උඩුගත කරන්න"))
 
 image = None
@@ -83,18 +80,17 @@ if choice == "Camera":
     if camera_file is not None:
         image = Image.open(camera_file)
 elif choice == "Upload / උඩුගත කරන්න":
-    uploaded_file = st.file_uploader("Upload Image / රූපය උඩුගත කරන්න", type=["jpg", "jpeg", "png"])
+    uploaded_file = st.file_uploader("Upload Image / රූපය උඩුගත කරන්න", type=["jpg","jpeg","png"])
     if uploaded_file is not None:
         image = Image.open(uploaded_file)
 
 if image is not None:
     st.image(image, caption="Input Image / ලබාදුන් රූපය", use_column_width=True)
 
-    # Extract features and predict
-    features = extract_features(image).reshape(1, -1)
+    # Predict
+    features = extract_features(image).reshape(1,-1)
     pred_class = model.predict(features)[0]
 
-    # Display prediction
     if language == "English":
         st.subheader("Prediction Result")
         st.success(f"Disease Detected: **{class_map[pred_class]['name_en']}**")
