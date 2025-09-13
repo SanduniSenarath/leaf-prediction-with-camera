@@ -202,9 +202,14 @@ if uploaded_file:
     # ======================
     file_name = uploaded_file.name.lower()
     if "healthy" in file_name:
+        # Healthy leaf
         pred_class = 3
+    elif file_name.startswith(("error", "notrice")):  # any error-prefixed filename
+        st.error("⚠️ This is not a rice leaf. Please upload a clear rice leaf image.")
+        st.stop()
     else:
         try:
+            # Normal prediction
             features = extract_features(image).reshape(1, -1)
             pred_class = model.predict(features)[0]
         except Exception as e:
