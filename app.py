@@ -120,15 +120,15 @@ from matplotlib.colors import rgb_to_hsv
 MODEL_PATH = "best_leaf_model.pkl"
 
 class_map = {
-    0: {"name_en": "Bacterial Leaf Blight", 
+    0: {"name_en": "Bacterial Leaf Blight",
         "name_si": "බැක්ටීරියා ලීෆ් බ්ලයිට්",
         "desc_en": "A bacterial disease causing yellowing and drying of leaf tips and margins.",
         "desc_si": "බැක්ටීරියාමගින් ඇති වන රෝගයක්, කොළ වල ඉගිලි සහ කෙළවරේ කොළ පෙරළි වීම හා වියළීම සිදු කරයි."},
-    1: {"name_en": "Brown Spot", 
+    1: {"name_en": "Brown Spot",
         "name_si": "බ්‍රවුන් ස්පොට්",
         "desc_en": "A fungal disease characterized by brown lesions on leaves.",
         "desc_si": "කොළ මත කළු කොළ පැහැති ලක්ෂණ ඇති කරන ෆංගල් රෝගයක්."},
-    2: {"name_en": "Leaf Smut", 
+    2: {"name_en": "Leaf Smut",
         "name_si": "ලීෆ් ස්මට්",
         "desc_en": "A fungal disease that causes black spores on leaf surfaces.",
         "desc_si": "කොළ මත කළු ස්පෝර් ඇති කරන ෆංගල් රෝගයක්."}
@@ -148,25 +148,28 @@ def extract_features(image: Image.Image):
     img = np.array(img)
     img = np.array(Image.fromarray(img).resize((128, 128)))
 
-    # 1. Color histogram
+    # RGB histogram
     hist = np.histogramdd(
         img.reshape(-1, 3),
         bins=(10, 10, 10),
         range=((0, 255), (0, 255), (0, 255))
     )[0].flatten()
 
-    # 2. HOG
+    # HOG features
     gray = rgb2gray(img)
     hog_features = hog(
-        gray, orientations=8, pixels_per_cell=(16, 16),
-        cells_per_block=(1, 1), visualize=False
+        gray,
+        orientations=8,
+        pixels_per_cell=(16, 16),
+        cells_per_block=(1, 1),
+        visualize=False
     )
 
-    # 3. LBP
+    # LBP features
     lbp = local_binary_pattern((gray * 255).astype(np.uint8), P=8, R=1)
     lbp_hist = np.histogram(lbp, bins=10, range=(0, 255))[0]
 
-    # 4. HSV histogram
+    # HSV histogram
     hsv = rgb_to_hsv(img / 255.0)
     hsv_hist = np.histogramdd(
         hsv.reshape(-1, 3),
@@ -175,6 +178,7 @@ def extract_features(image: Image.Image):
     )[0].flatten()
 
     return np.concatenate([hist, hog_features, lbp_hist, hsv_hist])
+
 
 # ======================
 # Streamlit UI
@@ -187,13 +191,14 @@ st.markdown(
     body {background-color: #ffffff;}
     .big-font {font-size:30px !important; color: #006400; text-align: center;}
     .sub-font {font-size:20px !important; color: #228B22;}
-    .card {background-color: #fff9c4; padding: 15px; border-radius: 15px; box-shadow: 2px 2px 5px #aaa; margin-bottom: 10px;}
+    .card {background-color: #fff9c4; padding: 15px; border-radius: 15px;
+           box-shadow: 2px 2px 5px #aaa; margin-bottom: 10px;}
     </style>
-    """,
-    unsafe_allow_html=True
+    """, unsafe_allow_html=True
 )
 
-st.markdown('<p class="big-font">Rice Leaf Disease Detection / ගොයම් කොළ රෝග හඳුනා ගැනීම</p>', unsafe_allow_html=True)
+st.markdown('<p class="big-font">Rice Leaf Disease Detection / ගොයම් කොළ රෝග හඳුනා ගැනීම</p>',
+            unsafe_allow_html=True)
 
 # Language toggle
 language = st.checkbox("English / සිංහල", value=True)
@@ -214,48 +219,28 @@ else:
 if image:
     st.image(image, caption="Input Image / ලබාදුන් රූපය", use_container_width=True)
 
+    # Predict safely
     try:
-        # Extract features
         features = extract_features(image).reshape(1, -1)
-
-        # Predict with probability (if available)
-        if hasattr(model, "predict_proba"):
-            proba = model.predict_proba(features)[0]
-            max_prob = np.max(proba)
-            pred_class = np.argmax(proba)
-
-            if max_prob < 0.6:  # confidence threshold
-                st.error("⚠️ This image is not recognized as a rice leaf disease. Please upload a clear leaf image.")
-            else:
-                with st.container():
-                    st.markdown('<div class="card">', unsafe_allow_html=True)
-                    if language:
-                        st.markdown("### Prediction Result")
-                        st.markdown(f"**Disease Detected:** {class_map[pred_class]['name_en']}")
-                        st.markdown(f"**Description:** {class_map[pred_class]['desc_en']}")
-                        st.markdown(f"**Confidence:** {max_prob*100:.1f}%")
-                    else:
-                        st.markdown("### ඵලය")
-                        st.markdown(f"**හඳුනාගත් රෝගය:** {class_map[pred_class]['name_si']}")
-                        st.markdown(f"**විස්තරය:** {class_map[pred_class]['desc_si']}")
-                        st.markdown(f"**විශ්වාසය:** {max_prob*100:.1f}%")
-                    st.markdown('</div>', unsafe_allow_html=True)
-
-        else:
-            # Fallback: model without predict_proba
-            pred_class = model.predict(features)[0]
-            with st.container():
-                st.markdown('<div class="card">', unsafe_allow_html=True)
-                if language:
-                    st.markdown("### Prediction Result")
-                    st.markdown(f"**Disease Detected:** {class_map[pred_class]['name_en']}")
-                    st.markdown(f"**Description:** {class_map[pred_class]['desc_en']}")
-                else:
-                    st.markdown("### ඵලය")
-                    st.markdown(f"**හඳුනාගත් රෝගය:** {class_map[pred_class]['name_si']}")
-                    st.markdown(f"**විස්තරය:** {class_map[pred_class]['desc_si']}")
-                st.markdown('</div>', unsafe_allow_html=True)
-
+        pred_class = model.predict(features)[0]
     except Exception as e:
-        st.error("⚠️ Invalid image or processing error. Please upload a valid rice leaf image.")
+        st.error(f"❌ Feature extraction or prediction failed: {e}")
+        st.stop()
 
+    # Display result
+    with st.container():
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+
+        if pred_class in class_map:
+            if language:
+                st.markdown("### Prediction Result")
+                st.markdown(f"**Disease Detected:** {class_map[pred_class]['name_en']}")
+                st.markdown(f"**Description:** {class_map[pred_class]['desc_en']}")
+            else:
+                st.markdown("### ඵලය")
+                st.markdown(f"**හඳුනාගත් රෝගය:** {class_map[pred_class]['name_si']}")
+                st.markdown(f"**විස්තරය:** {class_map[pred_class]['desc_si']}")
+        else:
+            st.warning("⚠️ This image is not recognized as a rice leaf disease. Please upload a clear leaf image.")
+
+        st.markdown('</div>', unsafe_allow_html=True)
